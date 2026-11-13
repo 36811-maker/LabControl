@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erro Interno (500) — LabControl</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="error-page">
+    <div class="error-card">
+        <div class="error-badge error-badge-danger">500</div>
+        <h1>Erro no Servidor</h1>
+        <p>Ocorreu uma falha inesperada ao processar sua solicitação. O erro foi registrado para análise.</p>
+        <div class="actions">
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Voltar ao Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

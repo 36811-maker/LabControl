@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Negado (403) — LabControl</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="error-page">
+    <div class="error-card">
+        <div class="error-badge">403</div>
+        <h1>Acesso Não Autorizado</h1>
+        <p>Você não possui as permissões necessárias para acessar este recurso.</p>
+        <div class="actions">
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Voltar ao Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

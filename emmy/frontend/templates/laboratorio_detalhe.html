@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}{{ laboratorio.identificador }} — Detalhes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <a href="{{ url_for('laboratorios.index') }}" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; margin-bottom: 8px;">
+            &larr; Voltar para Laboratórios
+        </a>
+        <h1>{{ laboratorio.identificador }} — {{ laboratorio.nome }}</h1>
+        <p class="header-subtitle">{{ laboratorio.descricao or 'Laboratório de informática' }}</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ url_for('computadores.index', laboratorio_id=laboratorio.id) }}" class="btn btn-secondary">
+            Filtrar em Computadores
+        </a>
+    </div>
+</div>
+
+<!-- Informações Resumidas do Laboratório -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Capacidade Máxima</span>
+        </div>
+        <div class="metric-value">{{ laboratorio.capacidade_maxima }}</div>
+        <div class="metric-desc">Alunos suportados</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Total Computadores</span>
+        </div>
+        <div class="metric-value">{{ laboratorio.total_computadores }}</div>
+        <div class="metric-desc">Equipamentos associados</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Funcionando</span>
+        </div>
+        <div class="metric-value" style="color: var(--status-funcionando);">{{ laboratorio.computadores_funcionando }}</div>
+        <div class="metric-desc">Disponíveis para aulas</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Com Defeito</span>
+        </div>
+        <div class="metric-value" style="color: var(--status-defeito);">{{ laboratorio.computadores_defeito }}</div>
+        <div class="metric-desc">Necessitam reparo</div>
+    </div>
+</div>
+
+<!-- Lista de Computadores Deste Laboratório -->
+<div class="content-card">
+    <div class="card-header">
+        <h2 class="card-title">Computadores Alocados neste Laboratório</h2>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">{{ computadores|length }} equipamentos</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Identificador</th>
+                    <th>Hostname</th>
+                    <th>Estado Atual</th>
+                    <th>Observações</th>
+                    <th>Data Cadastro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pc in computadores %}
+                <tr>
+                    <td><strong>{{ pc.identificador }}</strong></td>
+                    <td><code>{{ pc.hostname }}</code></td>
+                    <td>
+                        <span class="status-badge badge-{{ pc.estado.lower().replace(' ', '-') }}">{{ pc.estado }}</span>
+                    </td>
+                    <td>{{ pc.observacao or '—' }}</td>
+                    <td>{{ pc.criado_em.strftime('%d/%m/%Y') }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                        Nenhum computador cadastrado neste laboratório ainda.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

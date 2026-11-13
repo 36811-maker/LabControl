@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuração Inicial — LabControl</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">LC</div>
+            <h1 class="auth-title">Configuração <span>Inicial</span></h1>
+            <p class="auth-subtitle">Cadastre o primeiro Administrador com segurança</p>
+        </div>
+
+        <div class="flash-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span>{{ message }}</span>
+                            <button type="button" class="alert-close">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.setup_inicial') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="nome" class="form-label">Nome Completo</label>
+                <input type="text" id="nome" name="nome" class="form-control" placeholder="Ex: Administrador Central" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">E-mail Institucional</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="admin@escola.edu.br" required>
+            </div>
+
+            <div class="form-group">
+                <label for="username" class="form-label">Nome de Usuário (Login)</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="admin" required>
+            </div>
+
+            <div class="form-group">
+                <label for="senha" class="form-label">Senha de Acesso (Mínimo 6 caracteres)</label>
+                <input type="password" id="senha" name="senha" class="form-control" placeholder="Digite uma senha forte" required>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmacao" class="form-label">Confirmação da Senha</label>
+                <input type="password" id="confirmacao" name="confirmacao" class="form-control" placeholder="Repita a senha" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 10px;">
+                Concluir Cadastro do Administrador
+            </button>
+        </form>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

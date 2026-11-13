@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar no Sistema — LabControl</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">LC</div>
+            <h1 class="auth-title">Lab<span>Control</span></h1>
+            <p class="auth-subtitle">Gestão de Laboratórios de Informática</p>
+        </div>
+
+        <!-- Alertas Flash -->
+        <div class="flash-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span>{{ message }}</span>
+                            <button type="button" class="alert-close">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        {% if total_usuarios == 0 %}
+        <div class="alert alert-warning" style="margin-bottom: 20px;">
+            <strong>Primeira Inicialização:</strong> O banco de dados está vazio.
+            <div style="margin-top: 8px;">
+                <a href="{{ url_for('auth.setup_inicial') }}" class="btn btn-warning btn-sm" style="width: 100%;">
+                    Cadastrar 1º Administrador
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="identificador" class="form-label">Usuário ou E-mail</label>
+                <input
+                    type="text"
+                    id="identificador"
+                    name="identificador"
+                    class="form-control"
+                    placeholder="Digite seu usuário ou e-mail"
+                    value="{{ identificador or '' }}"
+                    required
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="senha" class="form-label">Senha de Acesso</label>
+                <input
+                    type="password"
+                    id="senha"
+                    name="senha"
+                    class="form-control"
+                    placeholder="Digite sua senha"
+                    required
+                >
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer;">
+                    <input type="checkbox" name="lembrar" value="1">
+                    Lembrar minha sessão
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 1rem;">
+                Entrar no LabControl
+            </button>
+        </form>
+
+        <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+            <p style="margin-bottom: 6px; font-weight: 600; color: var(--lavender);">Perfis de Acesso Disponíveis:</p>
+            <p><strong>Administrador:</strong> Gestão total de usuários, labs e chamados</p>
+            <p><strong>Professor:</strong> Reservas de labs e abertura de chamados</p>
+            <p><strong>TI:</strong> Gestão de computadores e atendimento técnico</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

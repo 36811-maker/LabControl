@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Computadores{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1>Inventário de Computadores</h1>
+        <p class="header-subtitle">Monitore os equipamentos, hostnames e gerencie manutenções</p>
+    </div>
+    <div class="header-actions">
+        {% if current_user.is_admin or current_user.is_ti %}
+        <button type="button" class="btn btn-primary" data-modal-target="#modal-novo-pc">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Novo Computador
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filtros de Busca -->
+<form method="GET" action="{{ url_for('computadores.index') }}" class="filter-bar">
+    <div style="flex: 1; min-width: 220px;">
+        <input
+            type="text"
+            name="q"
+            value="{{ q }}"
+            class="form-control"
+            placeholder="Pesquisar por identificador ou hostname..."
+        >
+    </div>
+
+    <div style="min-width: 180px;">
+        <select name="laboratorio_id" class="form-select">
+            <option value="">Todos os Laboratórios</option>
+            {% for lab in laboratorios %}
+            <option value="{{ lab.id }}" {% if lab_id == lab.id|string %}selected{% endif %}>
+                {{ lab.identificador }} ({{ lab.nome }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="min-width: 180px;">
+        <select name="estado" class="form-select">
+            <option value="">Todos os Estados</option>
+            {% for est in estados %}
+            <option value="{{ est }}" {% if estado == est %}selected{% endif %}>{{ est }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Filtrar
+    </button>
+
+    {% if q or lab_id or estado %}
+    <a href="{{ url_for('computadores.index') }}" class="btn btn-secondary">Limpar Filtros</a>
+    {% endif %}
+</form>
+
+<!-- Tabela de Computadores -->
+<div class="content-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Identificador</th>
+                    <th>Hostname</th>
+                    <th>Laboratório</th>
+                    <th>Estado Atual</th>
+                    <th>Observações</th>
+                    <th>Cadastrado em</th>
+                    {% if current_user.is_admin or current_user.is_ti %}
+                    <th style="text-align: right;">Ações de TI</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for pc in computadores %}
+                <tr>
+                    <td><strong>{{ pc.identificador }}</strong></td>
+                    <td><code>{{ pc.hostname }}</code></td>
+                    <td>
+                        <span style="color: var(--lavender);">{{ pc.laboratorio.identificador }}</span>
+                    </td>
+                    <td>
+                        <span class="status-badge badge-{{ pc.estado.lower().replace(' ', '-') }}">{{ pc.estado }}</span>
+                    </td>
+                    <td>{{ pc.observacao or '—' }}</td>
+                    <td>{{ pc.criado_em.strftime('%d/%m/%Y') }}</td>
+
+                    {% if current_user.is_admin or current_user.is_ti %}
+                    <td style="text-align: right; white-space: nowrap;">
+                        <!-- Botão de Atualização Rápida de Estado -->
+                        <button
+                            type="button"
+                            class="btn btn-warning btn-sm"
+                            data-modal-target="#modal-estado-pc-{{ pc.id }}"
+                            title="Atualizar Estado Técnico"
+                        >
+                            Alterar Estado
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-secondary btn-sm"
+                            data-modal-target="#modal-editar-pc-{{ pc.id }}"
+                            title="Editar Computador"
+                        >
+                            Editar
+                        </button>
+
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm"
+                            data-modal-target="#modal-excluir-pc-{{ pc.id }}"
+                            title="Excluir Computador"
+                        >
+                            Excluir
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+
+                {% if current_user.is_admin or current_user.is_ti %}
+                <!-- Modal Atualização de Estado Técnico -->
+                <div class="modal-overlay" id="modal-estado-pc-{{ pc.id }}">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Atualizar Estado Técnico — {{ pc.identificador }}</h3>
+                            <button type="button" class="modal-close">&times;</button>
+                        </div>
+                        <form method="POST" action="{{ url_for('computadores.atualizar_estado', pc_id=pc.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label class="form-label">Estado Operacional</label>
+                                    <select name="estado" class="form-select" required>
+                                        {% for est in estados %}
+                                        <option value="{{ est }}" {% if pc.estado == est %}selected{% endif %}>{{ est }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Nota / Observação Técnica</label>
+                                    <textarea name="observacao" class="form-control" placeholder="Descreva o motivo da alteração de estado...">{{ pc.observacao or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Salvar Estado</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Modal Editar Computador -->
+                <div class="modal-overlay" id="modal-editar-pc-{{ pc.id }}">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Editar Equipamento — {{ pc.identificador }}</h3>
+                            <button type="button" class="modal-close">&times;</button>
+                        </div>
+                        <form method="POST" action="{{ url_for('computadores.editar', pc_id=pc.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label class="form-label">Identificador do PC</label>
+                                    <input type="text" name="identificador" class="form-control" value="{{ pc.identificador }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Hostname na Rede</label>
+                                    <input type="text" name="hostname" class="form-control" value="{{ pc.hostname }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Laboratório Alocado</label>
+                                    <select name="laboratorio_id" class="form-select" required>
+                                        {% for l in laboratorios %}
+                                        <option value="{{ l.id }}" {% if pc.laboratorio_id == l.id %}selected{% endif %}>
+                                            {{ l.identificador }} — {{ l.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Estado Operacional</label>
+                                    <select name="estado" class="form-select" required>
+                                        {% for est in estados %}
+                                        <option value="{{ est }}" {% if pc.estado == est %}selected{% endif %}>{{ est }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Observação</label>
+                                    <textarea name="observacao" class="form-control">{{ pc.observacao or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Modal Excluir Computador -->
+                <div class="modal-overlay" id="modal-excluir-pc-{{ pc.id }}">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Confirmar Exclusão</h3>
+                            <button type="button" class="modal-close">&times;</button>
+                        </div>
+                        <form method="POST" action="{{ url_for('computadores.excluir', pc_id=pc.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="modal-body">
+                                <p>Deseja realmente remover o computador <strong>{{ pc.identificador }} ({{ pc.hostname }})</strong>?</p>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
+                                    Atenção: O sistema não permite excluir computadores com chamados técnicos em andamento vinculados.
+                                </p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                                <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                        Nenhum computador encontrado para os filtros selecionados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if current_user.is_admin or current_user.is_ti %}
+<!-- Modal Novo Computador -->
+<div class="modal-overlay" id="modal-novo-pc">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Cadastrar Novo Equipamento</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('computadores.novo') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Identificador (Ex: PC-L01-41)</label>
+                    <input type="text" name="identificador" class="form-control" placeholder="PC-LXX-XX" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Hostname na Rede (Ex: lab01-desk41)</label>
+                    <input type="text" name="hostname" class="form-control" placeholder="lab01-deskXX" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Laboratório Destino</label>
+                    <select name="laboratorio_id" class="form-select" required>
+                        <option value="">Selecione o Laboratório</option>
+                        {% for l in laboratorios %}
+                        <option value="{{ l.id }}">{{ l.identificador }} — {{ l.nome }} ({{ l.computadores_funcionando }} funcionando)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Estado Inicial</label>
+                    <select name="estado" class="form-select" required>
+                        {% for est in estados %}
+                        <option value="{{ est }}" {% if est == 'Funcionando' %}selected{% endif %}>{{ est }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Observações Técnicas (Opcional)</label>
+                    <textarea name="observacao" class="form-control" placeholder="Informações de garantia, peças ou localização..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Cadastrar Computador</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

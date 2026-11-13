@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Chamados Técnicos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1>Chamados Técnicos</h1>
+        <p class="header-subtitle">
+            {% if current_user.is_professor %}
+            Relate falhas em equipamentos ou infraestrutura e acompanhe a resolução
+            {% else %}
+            Central de atendimento, triagem e manutenção dos laboratórios
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" data-modal-target="#modal-novo-chamado">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Abrir Chamado
+        </button>
+    </div>
+</div>
+
+<!-- Filtros de Chamados -->
+<form method="GET" action="{{ url_for('chamados.index') }}" class="filter-bar">
+    <div style="min-width: 180px;">
+        <select name="laboratorio_id" class="form-select">
+            <option value="">Todos os Laboratórios</option>
+            {% for lab in laboratorios %}
+            <option value="{{ lab.id }}" {% if lab_id == lab.id|string %}selected{% endif %}>
+                {{ lab.identificador }} ({{ lab.nome }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="min-width: 180px;">
+        <select name="situacao" class="form-select">
+            <option value="">Todas as Situações</option>
+            {% for sit in situacoes %}
+            <option value="{{ sit }}" {% if situacao == sit %}selected{% endif %}>{{ sit }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Filtrar
+    </button>
+
+    {% if lab_id or situacao %}
+    <a href="{{ url_for('chamados.index') }}" class="btn btn-secondary">Limpar Filtros</a>
+    {% endif %}
+</form>
+
+<!-- Tabela de Chamados -->
+<div class="content-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Laboratório</th>
+                    <th>Computador</th>
+                    <th>Descrição do Problema</th>
+                    <th>Solicitante</th>
+                    <th>Situação</th>
+                    <th>Responsável TI</th>
+                    <th>Abertura</th>
+                    <th style="text-align: right;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for chm in chamados %}
+                <tr>
+                    <td><strong style="color: var(--accent-cyan);">{{ chm.numero_chamado }}</strong></td>
+                    <td>{{ chm.laboratorio.identificador }}</td>
+                    <td>
+                        {% if chm.computador %}
+                        <code>{{ chm.computador.identificador }}</code>
+                        {% else %}
+                        <span style="color: var(--text-muted);">Geral</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div>{{ chm.descricao }}</div>
+                        {% if chm.nota_atendimento %}
+                        <small style="color: var(--lavender);"><em>Nota TI: {{ chm.nota_atendimento }}</em></small>
+                        {% endif %}
+                    </td>
+                    <td>{{ chm.usuario.nome }}</td>
+                    <td>
+                        <span class="status-badge badge-{{ chm.situacao.lower().replace(' ', '-') }}">{{ chm.situacao }}</span>
+                    </td>
+                    <td>{{ chm.responsavel.nome if chm.responsavel else 'Não atribuído' }}</td>
+                    <td>{{ chm.data_abertura.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        {% if current_user.is_admin or current_user.is_ti %}
+                        <button
+                            type="button"
+                            class="btn btn-warning btn-sm"
+                            data-modal-target="#modal-atualizar-chamado-{{ chm.id }}"
+                            title="Atualizar atendimento"
+                        >
+                            Atender
+                        </button>
+                        {% else %}
+                        <button
+                            type="button"
+                            class="btn btn-secondary btn-sm"
+                            data-modal-target="#modal-detalhe-chamado-{{ chm.id }}"
+                            title="Ver detalhes"
+                        >
+                            Detalhes
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <!-- Modal Atualizar Atendimento (TI / Admin) -->
+                {% if current_user.is_admin or current_user.is_ti %}
+                <div class="modal-overlay" id="modal-atualizar-chamado-{{ chm.id }}">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Atendimento do Chamado {{ chm.numero_chamado }}</h3>
+                            <button type="button" class="modal-close">&times;</button>
+                        </div>
+                        <form method="POST" action="{{ url_for('chamados.atualizar', chamado_id=chm.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="modal-body">
+                                <p style="margin-bottom: 12px; font-size: 0.9rem;">
+                                    <strong>Problema:</strong> {{ chm.descricao }}
+                                </p>
+                                <div class="form-group">
+                                    <label class="form-label">Situação do Atendimento</label>
+                                    <select name="situacao" class="form-select" required>
+                                        {% for sit in situacoes %}
+                                        <option value="{{ sit }}" {% if chm.situacao == sit %}selected{% endif %}>{{ sit }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Técnico Responsável</label>
+                                    <select name="responsavel_id" class="form-select">
+                                        <option value="">Atribuir a mim ({{ current_user.nome }})</option>
+                                        {% for tec in tecnicos %}
+                                        <option value="{{ tec.id }}" {% if chm.responsavel_id == tec.id %}selected{% endif %}>
+                                            {{ tec.nome }} ({{ tec.perfil }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                {% if chm.computador %}
+                                <div class="form-group">
+                                    <label class="form-label">Sincronizar Estado do Equipamento ({{ chm.computador.identificador }})</label>
+                                    <select name="pc_estado" class="form-select">
+                                        <option value="Funcionando" {% if chm.computador.estado == 'Funcionando' %}selected{% endif %}>Funcionando (Resolvido)</option>
+                                        <option value="Com defeito" {% if chm.computador.estado == 'Com defeito' %}selected{% endif %}>Com defeito</option>
+                                        <option value="Em manutenção" {% if chm.computador.estado == 'Em manutenção' %}selected{% endif %}>Em manutenção</option>
+                                    </select>
+                                </div>
+                                {% endif %}
+
+                                <div class="form-group">
+                                    <label class="form-label">Notas e Ações Realizadas</label>
+                                    <textarea name="nota_atendimento" class="form-control" placeholder="Descreva os testes efetuados ou peças trocadas...">{{ chm.nota_atendimento or '' }}</textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Salvar Atendimento</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Modal Detalhes do Chamado (Professor) -->
+                <div class="modal-overlay" id="modal-detalhe-chamado-{{ chm.id }}">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Detalhes — {{ chm.numero_chamado }}</h3>
+                            <button type="button" class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <p><strong>Laboratório:</strong> {{ chm.laboratorio.identificador }} ({{ chm.laboratorio.nome }})</p>
+                            <p><strong>Equipamento:</strong> {{ chm.computador.identificador if chm.computador else 'Geral' }}</p>
+                            <p><strong>Data de Abertura:</strong> {{ chm.data_abertura.strftime('%d/%m/%Y às %H:%M') }}</p>
+                            <p><strong>Situação:</strong> <span class="status-badge badge-{{ chm.situacao.lower().replace(' ', '-') }}">{{ chm.situacao }}</span></p>
+                            <p><strong>Técnico Responsável:</strong> {{ chm.responsavel.nome if chm.responsavel else 'Aguardando atribuição' }}</p>
+                            {% if chm.data_conclusao %}
+                            <p><strong>Concluído em:</strong> {{ chm.data_conclusao.strftime('%d/%m/%Y às %H:%M') }}</p>
+                            {% endif %}
+                            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
+                            <p><strong>Descrição do Problema:</strong></p>
+                            <p style="color: var(--text-secondary); margin-bottom: 12px;">{{ chm.descricao }}</p>
+                            {% if chm.nota_atendimento %}
+                            <p><strong>Parecer Técnico:</strong></p>
+                            <p style="color: var(--lavender);">{{ chm.nota_atendimento }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-cancel">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+
+                {% else %}
+                <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                        Nenhum chamado encontrado para os filtros selecionados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Novo Chamado -->
+<div class="modal-overlay" id="modal-novo-chamado">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Abertura de Chamado Técnico</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('chamados.novo') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Laboratório Afetado</label>
+                    <select name="laboratorio_id" id="chamado-laboratorio-select" class="form-select" required>
+                        <option value="">Selecione o laboratório</option>
+                        {% for l in laboratorios %}
+                        <option value="{{ l.id }}">{{ l.identificador }} — {{ l.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Computador Relacionado (Opcional)</label>
+                    <select name="computador_id" id="chamado-computador-select" class="form-select">
+                        <option value="">Selecione o laboratório primeiro...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Descrição Detalhada do Problema</label>
+                    <textarea name="descricao" class="form-control" placeholder="Descreva o que está ocorrendo (ex: tela preta, sem conexão à rede, teclado com falha...)" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--text-secondary); cursor: pointer;">
+                        <input type="checkbox" name="marcar_defeito" value="1" checked>
+                        Marcar computador automaticamente como "Com defeito" no inventário
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Registrar Chamado</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

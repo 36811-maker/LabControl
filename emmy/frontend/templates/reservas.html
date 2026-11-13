@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Reservas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1>Reservas de Laboratórios</h1>
+        <p class="header-subtitle">
+            {% if current_user.is_professor %}
+            Gerencie seus agendamentos de aulas práticas nos laboratórios
+            {% else %}
+            Visão geral de agendamentos e ocupação dos ambientes escolares
+            {% endif %}
+        </p>
+    </div>
+    <div class="header-actions">
+        {% if current_user.is_professor or current_user.is_admin %}
+        <button type="button" class="btn btn-primary" data-modal-target="#modal-nova-reserva">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Solicitar Reserva
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filtros de Busca -->
+<form method="GET" action="{{ url_for('reservas.index') }}" class="filter-bar">
+    <div style="min-width: 180px;">
+        <select name="laboratorio_id" class="form-select">
+            <option value="">Todos os Laboratórios</option>
+            {% for lab in laboratorios %}
+            <option value="{{ lab.id }}" {% if lab_id == lab.id|string %}selected{% endif %}>
+                {{ lab.identificador }} ({{ lab.nome }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="min-width: 160px;">
+        <input
+            type="date"
+            name="data"
+            value="{{ data_filtro }}"
+            class="form-control"
+            title="Filtrar por data específica"
+        >
+    </div>
+
+    <div style="min-width: 160px;">
+        <select name="situacao" class="form-select">
+            <option value="">Todas as Situações</option>
+            {% for sit in situacoes %}
+            <option value="{{ sit }}" {% if situacao == sit %}selected{% endif %}>{{ sit }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Filtrar
+    </button>
+
+    {% if lab_id or data_filtro or situacao %}
+    <a href="{{ url_for('reservas.index') }}" class="btn btn-secondary">Limpar Filtros</a>
+    {% endif %}
+</form>
+
+<!-- Tabela de Reservas -->
+<div class="content-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Laboratório</th>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Turma</th>
+                    <th>Qtd. Alunos</th>
+                    <th>Professor Responsável</th>
+                    <th>Situação</th>
+                    <th style="text-align: right;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for res in reservas %}
+                <tr>
+                    <td>
+                        <strong style="color: var(--accent-cyan);">{{ res.laboratorio.identificador }}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">{{ res.laboratorio.nome }}</div>
+                    </td>
+                    <td><strong>{{ res.data.strftime('%d/%m/%Y') }}</strong></td>
+                    <td>{{ res.horario_inicio.strftime('%H:%M') }} às {{ res.horario_fim.strftime('%H:%M') }}</td>
+                    <td>{{ res.turma }}</td>
+                    <td>{{ res.quantidade_alunos }} alunos</td>
+                    <td>{{ res.professor.nome }}</td>
+                    <td>
+                        <span class="status-badge badge-{{ res.situacao.lower() }}">{{ res.situacao }}</span>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        {% if res.situacao == 'Confirmada' and (current_user.is_admin or current_user.id == res.professor_id) %}
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm"
+                            data-modal-target="#modal-cancelar-reserva-{{ res.id }}"
+                            title="Cancelar reserva"
+                        >
+                            Cancelar
+                        </button>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                {% if res.situacao == 'Confirmada' and (current_user.is_admin or current_user.id == res.professor_id) %}
+                <!-- Modal Cancelar Reserva -->
+                <div class="modal-overlay" id="modal-cancelar-reserva-{{ res.id }}">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Cancelar Reserva #{{ res.id }}</h3>
+                            <button type="button" class="modal-close">&times;</button>
+                        </div>
+                        <form method="POST" action="{{ url_for('reservas.cancelar', reserva_id=res.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="modal-body">
+                                <p>Deseja realmente cancelar a reserva do <strong>{{ res.laboratorio.identificador }}</strong> para o dia <strong>{{ res.data.strftime('%d/%m/%Y') }} ({{ res.horario_inicio.strftime('%H:%M') }} às {{ res.horario_fim.strftime('%H:%M') }})</strong>?</p>
+                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
+                                    Turma: {{ res.turma }} ({{ res.quantidade_alunos }} alunos)
+                                </p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-cancel">Voltar</button>
+                                <button type="submit" class="btn btn-danger">Confirmar Cancelamento</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                        Nenhuma reserva encontrada para os critérios informados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if current_user.is_professor or current_user.is_admin %}
+<!-- Modal Nova Reserva com Validação Dinâmica -->
+<div class="modal-overlay" id="modal-nova-reserva">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 class="modal-title">Agendar Laboratório de Informática</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('reservas.nova') }}" id="form-nova-reserva">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-body">
+                <!-- Caixa de Feedback Dinâmico de Disponibilidade -->
+                <div id="reserva-status-feedback" style="display: none; margin-bottom: 16px;"></div>
+
+                <div class="form-group">
+                    <label class="form-label">Laboratório Pretendido</label>
+                    <select name="laboratorio_id" class="form-select" required>
+                        <option value="">Selecione um laboratório</option>
+                        {% for l in laboratorios %}
+                        <option value="{{ l.id }}">
+                            {{ l.identificador }} — {{ l.nome }} (Capacidade: {{ l.capacidade_maxima }} | Funcionando: {{ l.computadores_funcionando }} PCs)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-group">
+                        <label class="form-label">Turma / Disciplina</label>
+                        <input type="text" name="turma" class="form-control" placeholder="Ex: 3º Ano Informática B" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Quantidade de Alunos</label>
+                        <input type="number" name="quantidade_alunos" class="form-control" placeholder="Ex: 32" min="1" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Data da Reserva</label>
+                    <input type="date" name="data" class="form-control" required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-group">
+                        <label class="form-label">Horário de Início</label>
+                        <input type="time" name="horario_inicio" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Horário de Término</label>
+                        <input type="time" name="horario_fim" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Finalidade da Aula Prática (Opcional)</label>
+                    <textarea name="finalidade" class="form-control" placeholder="Ex: Avaliação prática de desenvolvimento web..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Confirmar Agendamento</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

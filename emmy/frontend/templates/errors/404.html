@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Não Encontrada (404) — LabControl</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="error-page">
+    <div class="error-card">
+        <div class="error-badge">404</div>
+        <h1>Página Não Encontrada</h1>
+        <p>O recurso que você tentou acessar não existe ou foi removido.</p>
+        <div class="actions">
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Voltar ao Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

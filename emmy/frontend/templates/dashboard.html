@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1>Painel Geral</h1>
+        <p class="header-subtitle">Bem-vindo(a), {{ current_user.nome }} — Visão consolidada em tempo real</p>
+    </div>
+    <div class="header-actions">
+        {% if current_user.is_professor %}
+            <a href="{{ url_for('reservas.index') }}" class="btn btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                Nova Reserva
+            </a>
+            <a href="{{ url_for('chamados.index') }}" class="btn btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                Abrir Chamado
+            </a>
+        {% elif current_user.is_ti %}
+            <a href="{{ url_for('chamados.index') }}" class="btn btn-primary">
+                Fila de Chamados
+            </a>
+            <a href="{{ url_for('computadores.index') }}" class="btn btn-secondary">
+                Gerenciar Equipamentos
+            </a>
+        {% elif current_user.is_admin %}
+            <a href="{{ url_for('laboratorios.index') }}" class="btn btn-primary">
+                Gerenciar Laboratórios
+            </a>
+            <a href="{{ url_for('usuarios.index') }}" class="btn btn-secondary">
+                Gerenciar Usuários
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Grid de Indicadores Principais em Tempo Real -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Laboratórios</span>
+            <div class="metric-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            </div>
+        </div>
+        <div class="metric-value">{{ metrics.total_labs }}</div>
+        <div class="metric-desc">Ambientes cadastrados</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Total de PCs</span>
+            <div class="metric-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+            </div>
+        </div>
+        <div class="metric-value">{{ metrics.total_computadores }}</div>
+        <div class="metric-desc">Equipamentos inventariados</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Funcionando</span>
+            <div class="metric-icon success">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+        </div>
+        <div class="metric-value" style="color: var(--status-funcionando);">{{ metrics.pcs_funcionando }}</div>
+        <div class="metric-desc">Prontos para uso imediato</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Com Defeito</span>
+            <div class="metric-icon danger">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </div>
+        </div>
+        <div class="metric-value" style="color: var(--status-defeito);">{{ metrics.pcs_defeito }}</div>
+        <div class="metric-desc">Aguardando reparo técnico</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Em Manutenção</span>
+            <div class="metric-icon warning">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+        </div>
+        <div class="metric-value" style="color: var(--status-manutencao);">{{ metrics.pcs_manutencao }}</div>
+        <div class="metric-desc">Intervenção em andamento</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span class="metric-title">Chamados em Aberto</span>
+            <div class="metric-icon danger">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+        </div>
+        <div class="metric-value">{{ metrics.chamados_abertos }}</div>
+        <div class="metric-desc">{{ metrics.chamados_em_andamento }} em andamento</div>
+    </div>
+</div>
+
+<!-- Gráficos Visuais com Chart.js -->
+<div class="dashboard-grid">
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Distribuição dos Equipamentos</h2>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Status operacional</span>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="chartPcsStatus"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Situação dos Chamados Técnicos</h2>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Volume de ocorrências</span>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="chartChamadosStatus"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Painéis Específicos por Perfil de Usuário -->
+{% if current_user.is_admin %}
+<div class="dashboard-grid">
+    <!-- Próximas Reservas do Sistema -->
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Próximas Reservas Confirmadas</h2>
+            <a href="{{ url_for('reservas.index') }}" class="btn btn-secondary btn-sm">Ver todas</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Laboratório</th>
+                        <th>Data & Horário</th>
+                        <th>Professor</th>
+                        <th>Alunos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in metrics.proximas_reservas %}
+                    <tr>
+                        <td><strong>{{ res.laboratorio.identificador }}</strong></td>
+                        <td>{{ res.data.strftime('%d/%m/%Y') }} — {{ res.horario_inicio.strftime('%H:%M') }} às {{ res.horario_fim.strftime('%H:%M') }}</td>
+                        <td>{{ res.professor.nome }}</td>
+                        <td>{{ res.quantidade_alunos }} alunos</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhuma reserva futura agendada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Chamados Recentes -->
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Ocorrências Técnicas Recentes</h2>
+            <a href="{{ url_for('chamados.index') }}" class="btn btn-secondary btn-sm">Ver todos</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Laboratório</th>
+                        <th>Situação</th>
+                        <th>Aberto em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for chm in metrics.ultimos_chamados %}
+                    <tr>
+                        <td><strong>{{ chm.numero_chamado }}</strong></td>
+                        <td>{{ chm.laboratorio.identificador }}</td>
+                        <td>
+                            <span class="status-badge badge-{{ chm.situacao.lower().replace(' ', '-') }}">{{ chm.situacao }}</span>
+                        </td>
+                        <td>{{ chm.data_abertura.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum chamado registrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% elif current_user.is_professor %}
+<div class="dashboard-grid">
+    <!-- Minhas Próximas Reservas -->
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Minhas Reservas Futuras</h2>
+            <a href="{{ url_for('reservas.index') }}" class="btn btn-secondary btn-sm">Todas as minhas reservas</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Laboratório</th>
+                        <th>Turma</th>
+                        <th>Data & Horário</th>
+                        <th>Alunos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in metrics.minhas_proximas_reservas %}
+                    <tr>
+                        <td><strong>{{ res.laboratorio.identificador }}</strong> ({{ res.laboratorio.nome }})</td>
+                        <td>{{ res.turma }}</td>
+                        <td>{{ res.data.strftime('%d/%m/%Y') }} — {{ res.horario_inicio.strftime('%H:%M') }} às {{ res.horario_fim.strftime('%H:%M') }}</td>
+                        <td>{{ res.quantidade_alunos }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                            Você não possui reservas futuras.
+                            <div style="margin-top: 8px;">
+                                <a href="{{ url_for('reservas.index') }}" class="btn btn-primary btn-sm">Agendar Laboratório</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Meus Chamados Recentes -->
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Meus Chamados Abertos</h2>
+            <a href="{{ url_for('chamados.index') }}" class="btn btn-secondary btn-sm">Ver todos</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Local</th>
+                        <th>Descrição</th>
+                        <th>Situação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for chm in metrics.meus_ultimos_chamados %}
+                    <tr>
+                        <td><strong>{{ chm.numero_chamado }}</strong></td>
+                        <td>{{ chm.laboratorio.identificador }}</td>
+                        <td>{{ chm.descricao[:40] }}{% if chm.descricao|length > 40 %}...{% endif %}</td>
+                        <td>
+                            <span class="status-badge badge-{{ chm.situacao.lower().replace(' ', '-') }}">{{ chm.situacao }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Você não abriu nenhum chamado recentemente.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% elif current_user.is_ti %}
+<div class="dashboard-grid">
+    <!-- Fila de Chamados Pendentes -->
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Fila de Atendimento Técnico</h2>
+            <a href="{{ url_for('chamados.index') }}" class="btn btn-secondary btn-sm">Abrir Fila Completa</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Laboratório</th>
+                        <th>Equipamento</th>
+                        <th>Situação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for chm in metrics.chamados_pendentes %}
+                    <tr>
+                        <td><strong>{{ chm.numero_chamado }}</strong></td>
+                        <td>{{ chm.laboratorio.identificador }}</td>
+                        <td>{{ chm.computador.identificador if chm.computador else 'Geral / Rede' }}</td>
+                        <td>
+                            <span class="status-badge badge-{{ chm.situacao.lower().replace(' ', '-') }}">{{ chm.situacao }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Nenhum chamado pendente no momento!</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Equipamentos que requerem manutenção -->
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Equipamentos Críticos</h2>
+            <a href="{{ url_for('computadores.index') }}" class="btn btn-secondary btn-sm">Ver todos</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>ID Equipamento</th>
+                        <th>Laboratório</th>
+                        <th>Estado</th>
+                        <th>Observação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pc in metrics.computadores_atencao %}
+                    <tr>
+                        <td><strong>{{ pc.identificador }}</strong></td>
+                        <td>{{ pc.laboratorio.identificador }}</td>
+                        <td>
+                            <span class="status-badge badge-{{ pc.estado.lower().replace(' ', '-') }}">{{ pc.estado }}</span>
+                        </td>
+                        <td>{{ pc.observacao or 'Sem observação' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">Todos os computadores estão funcionando perfeitamente!</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Envia dados calculados no backend diretamente para o Chart.js
+    window.dashboardChartsData = {
+        chart_computadores: {{ metrics.chart_computadores|tojson }},
+        chart_chamados: {{ metrics.chart_chamados|tojson }}
+    };
+</script>
+{% endblock %}

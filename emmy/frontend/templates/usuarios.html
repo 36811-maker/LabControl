@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciamento de Usuários{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-titles">
+        <h1>Gerenciamento de Usuários</h1>
+        <p class="header-subtitle">Controle de acessos, perfis e permissões do LabControl</p>
+    </div>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" data-modal-target="#modal-novo-usuario">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            Novo Usuário
+        </button>
+    </div>
+</div>
+
+<!-- Filtros de Usuários -->
+<form method="GET" action="{{ url_for('usuarios.index') }}" class="filter-bar">
+    <div style="flex: 1; min-width: 220px;">
+        <input
+            type="text"
+            name="q"
+            value="{{ q }}"
+            class="form-control"
+            placeholder="Pesquisar por nome, usuário ou e-mail..."
+        >
+    </div>
+
+    <div style="min-width: 180px;">
+        <select name="perfil" class="form-select">
+            <option value="">Todos os Perfis</option>
+            <option value="Administrador" {% if perfil == 'Administrador' %}selected{% endif %}>Administrador</option>
+            <option value="Professor" {% if perfil == 'Professor' %}selected{% endif %}>Professor</option>
+            <option value="TI" {% if perfil == 'TI' %}selected{% endif %}>TI</option>
+        </select>
+    </div>
+
+    <div style="min-width: 160px;">
+        <select name="status" class="form-select">
+            <option value="">Todos os Status</option>
+            <option value="ativo" {% if status == 'ativo' %}selected{% endif %}>Ativo</option>
+            <option value="inativo" {% if status == 'inativo' %}selected{% endif %}>Inativo</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Filtrar
+    </button>
+
+    {% if q or perfil or status %}
+    <a href="{{ url_for('usuarios.index') }}" class="btn btn-secondary">Limpar Filtros</a>
+    {% endif %}
+</form>
+
+<!-- Tabela de Usuários -->
+<div class="content-card">
+    <div class="table-responsive">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Login (Username)</th>
+                    <th>E-mail</th>
+                    <th>Perfil</th>
+                    <th>Status</th>
+                    <th>Cadastrado em</th>
+                    <th style="text-align: right;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td>
+                        <strong>{{ u.nome }}</strong>
+                        {% if u.id == current_user.id %}
+                        <span style="font-size: 0.75rem; color: var(--accent-cyan); margin-left: 4px;">(Você)</span>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ u.username }}</code></td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        <span class="user-role-badge role-{{ u.perfil }}">{{ u.perfil }}</span>
+                    </td>
+                    <td>
+                        {% if u.ativo %}
+                        <span class="status-badge badge-funcionando">Ativo</span>
+                        {% else %}
+                        <span class="status-badge badge-defeito">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ u.criado_em.strftime('%d/%m/%Y') }}</td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <button
+                            type="button"
+                            class="btn btn-secondary btn-sm"
+                            data-modal-target="#modal-editar-usuario-{{ u.id }}"
+                            title="Editar usuário"
+                        >
+                            Editar
+                        </button>
+
+                        {% if u.id != current_user.id %}
+                        <form method="POST" action="{{ url_for('usuarios.toggle_status', user_id=u.id) }}" style="display: inline-block;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% if u.ativo %}
+                            <button type="submit" class="btn btn-danger btn-sm" title="Desativar acesso">Desativar</button>
+                            {% else %}
+                            <button type="submit" class="btn btn-warning btn-sm" title="Reativar acesso">Ativar</button>
+                            {% endif %}
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <!-- Modal Editar Usuário -->
+                <div class="modal-overlay" id="modal-editar-usuario-{{ u.id }}">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Editar Usuário — {{ u.username }}</h3>
+                            <button type="button" class="modal-close">&times;</button>
+                        </div>
+                        <form method="POST" action="{{ url_for('usuarios.editar', user_id=u.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label class="form-label">Nome Completo</label>
+                                    <input type="text" name="nome" class="form-control" value="{{ u.nome }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">E-mail Institucional</label>
+                                    <input type="email" name="email" class="form-control" value="{{ u.email }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Perfil de Acesso</label>
+                                    <select name="perfil" class="form-select" required {% if u.id == current_user.id %}disabled{% endif %}>
+                                        <option value="Administrador" {% if u.perfil == 'Administrador' %}selected{% endif %}>Administrador</option>
+                                        <option value="Professor" {% if u.perfil == 'Professor' %}selected{% endif %}>Professor</option>
+                                        <option value="TI" {% if u.perfil == 'TI' %}selected{% endif %}>TI</option>
+                                    </select>
+                                    {% if u.id == current_user.id %}
+                                    <input type="hidden" name="perfil" value="{{ u.perfil }}">
+                                    <small style="color: var(--text-muted);">Você não pode alterar seu próprio perfil de administrador.</small>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Status da Conta</label>
+                                    <select name="ativo" class="form-select" {% if u.id == current_user.id %}disabled{% endif %}>
+                                        <option value="1" {% if u.ativo %}selected{% endif %}>Ativo</option>
+                                        <option value="0" {% if not u.ativo %}selected{% endif %}>Inativo</option>
+                                    </select>
+                                    {% if u.id == current_user.id %}
+                                    <input type="hidden" name="ativo" value="1">
+                                    {% endif %}
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Redefinir Senha (Deixe em branco para manter a atual)</label>
+                                    <input type="password" name="nova_senha" class="form-control" placeholder="Nova senha (mínimo 6 caracteres)">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                        Nenhum usuário encontrado para a busca.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Novo Usuário -->
+<div class="modal-overlay" id="modal-novo-usuario">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Cadastrar Novo Usuário</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('usuarios.novo') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Nome Completo</label>
+                    <input type="text" name="nome" class="form-control" placeholder="Ex: Profa. Roberta Lima" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">E-mail Institucional</label>
+                    <input type="email" name="email" class="form-control" placeholder="roberta.lima@escola.edu.br" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nome de Usuário (Login)</label>
+                    <input type="text" name="username" class="form-control" placeholder="profa.roberta" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Perfil de Acesso</label>
+                    <select name="perfil" class="form-select" required>
+                        <option value="Professor">Professor</option>
+                        <option value="TI">Técnico de TI</option>
+                        <option value="Administrador">Administrador</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Senha Inicial (Mínimo 6 caracteres)</label>
+                    <input type="password" name="senha" class="form-control" placeholder="Digite uma senha forte" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-cancel">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Cadastrar Usuário</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LabControl{% endblock %} — Gestão de Laboratórios</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Lateral -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">LC</div>
+                <div class="brand-text">Lab<span>Control</span></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <!-- 1. Dashboard -->
+                <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.blueprint == 'dashboard' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                    </svg>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+
+                <!-- 2. Laboratórios -->
+                <a href="{{ url_for('laboratorios.index') }}" class="nav-link {% if request.blueprint == 'laboratorios' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span class="nav-text">Laboratórios</span>
+                </a>
+
+                <!-- 3. Computadores -->
+                <a href="{{ url_for('computadores.index') }}" class="nav-link {% if request.blueprint == 'computadores' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <span class="nav-text">Computadores</span>
+                </a>
+
+                <!-- 4. Reservas -->
+                <a href="{{ url_for('reservas.index') }}" class="nav-link {% if request.blueprint == 'reservas' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span class="nav-text">Reservas</span>
+                </a>
+
+                <!-- 5. Chamados -->
+                <a href="{{ url_for('chamados.index') }}" class="nav-link {% if request.blueprint == 'chamados' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                    </svg>
+                    <span class="nav-text">Chamados</span>
+                </a>
+
+                <!-- 6. Usuários (somente Administrador) -->
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <a href="{{ url_for('usuarios.index') }}" class="nav-link {% if request.blueprint == 'usuarios' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="nav-text">Usuários</span>
+                </a>
+                {% endif %}
+            </nav>
+
+            <div class="sidebar-footer">
+                {% if current_user.is_authenticated %}
+                <div class="user-profile">
+                    <div class="user-avatar">{{ current_user.nome[:2].upper() }}</div>
+                    <div class="user-info">
+                        <div class="user-name" title="{{ current_user.nome }}">{{ current_user.nome }}</div>
+                        <span class="user-role-badge role-{{ current_user.perfil }}">{{ current_user.perfil }}</span>
+                    </div>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" class="btn-logout" title="Sair do sistema">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Sair</span>
+                </a>
+                {% endif %}
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            <div class="flash-container">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <span>{{ message }}</span>
+                                <button type="button" class="alert-close" aria-label="Fechar">&times;</button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
